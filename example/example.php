@@ -1,5 +1,7 @@
 <?php
 
+use Faker\Factory;
+
 require_once __DIR__ . '/../vendor/autoload.php';
 
 require_once __DIR__ . '/../src/Entity/Destination.php';
@@ -7,34 +9,47 @@ require_once __DIR__ . '/../src/Entity/Quote.php';
 require_once __DIR__ . '/../src/Entity/Site.php';
 require_once __DIR__ . '/../src/Entity/Template.php';
 require_once __DIR__ . '/../src/Entity/User.php';
+require_once __DIR__ . '/../src/Entity/Purchase.php';
 require_once __DIR__ . '/../src/Helper/SingletonTrait.php';
 require_once __DIR__ . '/../src/Context/ApplicationContext.php';
 require_once __DIR__ . '/../src/Repository/Repository.php';
 require_once __DIR__ . '/../src/Repository/DestinationRepository.php';
 require_once __DIR__ . '/../src/Repository/QuoteRepository.php';
 require_once __DIR__ . '/../src/Repository/SiteRepository.php';
+require_once __DIR__ . '/../src/Helper/PlaceholderReplacer.php';
+require_once __DIR__ . '/../src/Helper/QuotePlaceholderReplacer.php';
+require_once __DIR__ . '/../src/Helper/UserPlaceholderReplacer.php';
+require_once __DIR__ . '/../src/Helper/PurchasePlaceholderReplacer.php';
 require_once __DIR__ . '/../src/TemplateManager.php';
 
-$faker = \Faker\Factory::create();
+$faker = Factory::create();
 
 $template = new Template(
     1,
-    'Votre livraison à [quote:destination_name]',
+    '<i>Votre livraison à [quote:destination_name]</i><br><hr>',
     "
-Bonjour [user:first_name],
-
-Merci de nous avoir contacté pour votre livraison à [quote:destination_name].
-
-Bien cordialement,
-
-L'équipe de Shipper
+            Bonjour [user:first_name],
+            <br>Merci de nous avoir contacté pour votre livraison à [quote:destination_name].
+            <br>Votre token d'achat est <b style='color:red'>[purchase:token]</b>.
+            <br>Bien cordialement,
+            <br>L'équipe de Shipper
 ");
-$templateManager = new TemplateManager();
 
+// Initialiser les placeholders
+$quoteReplacer = new QuotePlaceholderReplacer();
+$userReplacer = new UserPlaceholderReplacer();
+$purchaseReplacer = new PurchasePlaceholderReplacer();
+
+// Initialiser le TemplateManager
+$templateManager = new TemplateManager([$quoteReplacer, $userReplacer, $purchaseReplacer]);
+
+// Calculer avec les données fournies
 $message = $templateManager->getTemplateComputed(
     $template,
     [
-        'quote' => new Quote($faker->randomNumber(), $faker->randomNumber(), $faker->randomNumber(), $faker->date())
+        'quote' => new Quote($faker->randomNumber(), $faker->randomNumber(), $faker->randomNumber(), $faker->date()),
+        'user' => new User($faker->randomNumber(), $faker->firstName, $faker->lastName, $faker->email),
+        'purchase' => new Purchase($faker->randomNumber(), $faker->uuid)
     ]
 );
 
